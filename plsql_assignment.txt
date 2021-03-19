@@ -1,0 +1,138 @@
+1.write trigger for insert,update and delete on product table
+   for every DML operation make entry of old record in historyproduct table
+    and when you are updating price of product then make entry in audit_product table
+    (productid,product name,old price, new price ,date , user)
+
+//For creating an audit table
+ >create table auditproduct6(
+        uname varchar2(20),
+        pid number,
+        pname varchar2(10),
+        oldp number,
+        newp number,
+        pdate date
+  );
+//For creating history table of product
+ >create table historyproduct3
+   as
+   select * from product
+   where 1=2;
+//For creating trigger
+ >create or replace trigger insertProduct after insert or delete or update on product
+    FOR EACH ROW
+    begin
+    if deleting then
+      insert into historyproduct3 values(:old.pid,:old.pname,:old.qty,:old.price,:old.mdate,:old.cid,:old.sid);
+    elsif inserting then
+      insert into historyproduct3 values(:new.pid,:new.pname,:new.qty,:new.price,:new.mdate,:new.cid,:new.sid);
+    else
+      insert into historyproduct3 values(:new.pid,:new.pname,:new.qty,:new.price,:new.mdate,:new.cid,:new.sid);
+    if :new.price!=:old.price then
+      insert into auditproduct6 values(USER,:old.pid,:old.pname,:old.price,:new.price,sysdate);
+    end if;
+   end if;
+ end;
+ >insert into product values(27,'laptop',2,3000,'21-feb-21',12,2);
+ >delete from product where pid=23;
+ >select * from historyproduct3;
+ >update product
+    set pname='chip'
+    where pid=21;
+ >select * from product;
+
+2.Create view and perform update operation on department table.
+ >create or replace trigger updatemyview instead of update on myview
+    FOR EACH ROW
+    begin
+    update dept
+    set dname=:new.dname
+    where deptno=:new.deptno;
+   end;
+ 
+ >create or replace trigger updatemyview instead of
+  update on myview
+  FOR EACH ROW
+  begin 
+    update dept
+    set dname=:new.dname
+    where deptno=:new.deptno;
+  end;
+ >update myview
+    set dname='testing'
+    where empno=7902;
+3.For creating history table and then check if the deleted value is stored in history.
+ >create table historyemp
+  as
+  select *
+  from emp
+  where 1=2;
+ >create or replace trigger insertHistoryEmp after delete on EMP
+    FOR EACH ROW
+    begin
+    insert into historyemp values(:old.empno,:old.ename,:old.job,:old.mgr,:old.hiredate,:old.sal,:old.comm,:old.deptno);
+   end;
+4.For creating an audit table and then audit the functions performed in trigger.
+ >create table auditDEPT(
+    uname varchar2(20),
+    event varchar2(8),
+    edate date,
+   deptno number)
+ >create or replace trigger insertDept before insert or delete or update on dept
+    FOR EACH ROW
+    begin
+     if deleting then
+      insert into auditDEPT values(USER,'delete',sysdate,:old.deptno);
+    elsif inserting then
+      insert into auditDEPT values(USER,'insert',sysdate,:new.deptno);
+    else
+      insert into auditDEPT values(USER,'update',sysdate,:new.deptno);
+   end if;
+  end;
+5.Custom exception program.
+ >create or replace procedure insertDept(pdno number, pdname varchar2,ploc varchar2)
+        as
+          max_dept_no number :=&dept;
+          wrong_deptno exception;
+          PRAGMA exception_init(wrong_deptno,-20001);
+        begin
+         if pdno>max_dept_no then
+          raise wrong_deptno;
+         end if;
+        insert into dept values(pdno,pdname,ploc);
+      exception
+        when wrong_deptno then
+        RAISE_APPLICATION_ERROR(-20001,'Deptno should be<'||max_dept_no);
+    end;
+ >begin
+    insertDept(56,'PURCHASE','PUNE');
+    end;
+6.write a function to generate email address for every employee.
+  email address should be name followed by . followed by 3 first 3 character of job 
+  followed by @mycompany.com
+  name=SMITH   job ='CLERK' the email ='SMITH.CLE@mycompany.com .
+
+ >create or replace function genemail(pname in varchar2,pjob in varchar2)
+        return varchar2
+        as
+        subs varchar2(20);
+        con varchar2(30);
+        begin
+         subs:=substr(pjob,1,3);
+         con:=concat(concat(concat(pname,'.'),subs),'@myCompany.com');
+      return con;
+     end;
+7. Create Procedure to query the EMP table, retrieving the salary and job title for 
+   an employee when provided with the employee number. The procedure must return a
+   value from the SAL and JOB columns for a specified employee.
+
+ >create or replace procedure findsaljob(pempno in emp.empno%type,psal out emp.sal%type,pjob out emp.job%type)
+        as
+        emprec emp%rowtype;
+        begin
+        select * into emprec
+        from emp
+        where empno=pempno;
+        psal:=emprec.sal;
+        pjob:=emprec.job;
+      dbms_output.put_line(emprec.empno||' '||emprec.sal||' '||emprec.job);
+    end;
